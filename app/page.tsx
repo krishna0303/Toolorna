@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle, Zap, Target, Tag } from "lucide-react";
+import { ArrowRight, CircleCheck as CheckCircle, Zap, Target, Tag } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 const fadeUp = {
