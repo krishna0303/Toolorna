@@ -15,18 +15,18 @@ const fadeUp = {
 const steps = [
   {
     icon: Target,
-    title: "Answer 4 Questions",
-    desc: "Tell us your profession, challenge, budget, and tools you've tried.",
+    title: "Describe Your Needs",
+    desc: "Tell us in your own words what you need — your role, problem, budget, and must-haves.",
   },
   {
     icon: Zap,
-    title: "Get AI Recommendation",
-    desc: "Our AI analyzes 500+ tools and picks the one perfect for you.",
+    title: "AI Searches the Web",
+    desc: "Our AI researches 500+ tools live on the internet and finds the one perfect for you.",
   },
   {
     icon: Tag,
-    title: "Save with Coupon",
-    desc: "Get an exclusive coupon code to save money on your perfect tool.",
+    title: "Get Best Deal",
+    desc: "Receive an exclusive coupon code verified to be currently active. Save real money.",
   },
 ];
 
@@ -38,8 +38,8 @@ const stats = [
 
 const trustIndicators = [
   "100% Free",
-  "Instant Result",
-  "Exclusive Coupons",
+  "Live Web Research",
+  "Verified Coupons",
 ];
 
 export default function Home() {
@@ -65,14 +65,14 @@ export default function Home() {
             variants={fadeUp}
             custom={1}
           >
-            Answer 4 quick questions. Get 1 perfect tool recommendation. Save
-            money with exclusive coupon codes.
+            Describe what you need in plain English. Our AI searches the internet
+            live, finds the best tool, and gets you a real working coupon code.
           </motion.p>
 
           <motion.div variants={fadeUp} custom={2}>
-            <Link to="/quiz">
+            <Link to="/requirements">
               <Button className="text-lg px-8 py-4">
-                Find My Perfect Tool <ArrowRight size={20} className="ml-2 inline" />
+                Describe Your Needs <ArrowRight size={20} className="ml-2 inline" />
               </Button>
             </Link>
           </motion.div>

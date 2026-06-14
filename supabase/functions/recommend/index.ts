@@ -8,65 +8,47 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const RECOMMENDATION_PROMPT = `You are an expert software tool advisor for Indian users.
-You have deep knowledge of all software tools, their Indian pricing, and current discount offers.
+const RECOMMENDATION_PROMPT = `You are a world-class software tool analyst and deal hunter for Indian professionals and businesses. You have encyclopedic knowledge of SaaS tools, their Indian pricing (INR), and the promotional landscape across every category.
 
-User Profile:
-- Profession: {profession}
-- Biggest Challenge: {problem}
-- Monthly Budget: {budget}
-- Tools Already Tried: {tools_tried}
+YOUR MISSION: Given the user's detailed requirements below, use your web search capability to find the SINGLE BEST tool match AND a currently active, real coupon code for it.
 
-Your task:
-1. Recommend EXACTLY ONE software tool that perfectly fits this user.
-2. Search the internet RIGHT NOW and find the best working coupon code for that tool.
-   - Find the highest discount percentage available today
-   - Verify it is likely still active (check recent sources)
-   - If no coupon exists, say "No coupon available right now"
+USER REQUIREMENTS:
+{requirements}
+
+EXECUTION STRATEGY:
+1. ANALYZE the requirements deeply — identify the core job-to-be-done, must-have features, budget constraints, team size, integrations needed, and Indian-specific requirements (UPI, GST billing, local compliance etc.)
+2. SEARCH the web for tools that solve this specific problem in 2025-2026. Do NOT recommend outdated or discontinued tools.
+3. EVALUATE the top candidates against every constraint the user mentioned. Pick the ONE tool that is the strongest overall match.
+4. HUNT FOR DEALS — Search the web RIGHT NOW for active coupon/promo codes for the chosen tool:
+   - Check the tool's official pricing/promotions page
+   - Check coupon sites (RetailMeNot, CouponDunia, GrabOn, etc.)
+   - Check recent blog posts or YouTube videos with promo links
+   - Verify the code is likely still valid (published within the last 90 days)
+   - If no coupon exists, search for partner/affiliate deals, startup programs, or education discounts
+5. CROSS-REFERENCE pricing — confirm the current Indian pricing from the official site, not cached/outdated data.
+
+CRITICAL RULES:
+- Recommend EXACTLY ONE tool. Not a list. The single best match.
+- All pricing MUST be in Indian Rupees (₹) and current as of today.
+- The coupon code MUST be a real code you found via web search, not fabricated.
+- If no real coupon code is found, set coupon_code to null — do NOT make up codes.
+- The why_perfect field must directly reference specific requirements the user stated.
 
 Respond ONLY in this exact JSON format, nothing else:
 {
-  "tool_name": "exact tool name",
-  "tagline": "one line what it does",
-  "why_perfect": "2-3 lines explaining exactly why this fits THIS user's profile",
-  "key_feature": "the single most useful feature for this user",
-  "indian_price_monthly": "₹XXX/month",
-  "indian_price_annual": "₹XXXX/year",
-  "free_tier": true/false,
-  "coupon_code": "CODEXXX or null",
+  "tool_name": "exact official tool name",
+  "tagline": "one-line description of what it does",
+  "why_perfect": "3-4 sentences explaining specifically how this tool addresses the user's stated requirements, mentioning features they asked for by name",
+  "key_feature": "the single most useful feature for this user's specific use case",
+  "indian_price_monthly": "₹XXX/month (current official pricing)",
+  "indian_price_annual": "₹XXXX/year (current official pricing)",
+  "free_tier": true_or_false,
+  "coupon_code": "REALCODE or null",
   "discount_percent": "XX% or null",
-  "coupon_source": "where you found this coupon",
-  "coupon_expiry": "date or unknown",
-  "affiliate_category": "hosting/vpn/design/productivity/marketing/other"
+  "coupon_source": "exact URL or site where you found this coupon",
+  "coupon_expiry": "YYYY-MM-DD or unknown",
+  "affiliate_category": "hosting/vpn/design/productivity/marketing/CRM/finance/other"
 }`;
-
-function buildPrompt(profession: string, problem: string, budget: string, tools_tried: string): string {
-  return RECOMMENDATION_PROMPT
-    .replace("{profession}", profession)
-    .replace("{problem}", problem)
-    .replace("{budget}", budget)
-    .replace("{tools_tried}", tools_tried || "None");
-}
-
-function stripHtml(str: string): string {
-  return str.replace(/<[^>]*>/g, "");
-}
-
-function sanitize(str: string): string {
-  return stripHtml(str).trim();
-}
-
-function sanitizeInput(input: Record<string, unknown>): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const [key, value] of Object.entries(input)) {
-    result[key] = typeof value === "string" ? sanitize(value) : "";
-  }
-  return result;
-}
-
-const VALID_PROFESSIONS = ["Student", "Freelancer", "Developer", "Content Creator", "Small Business", "Working Professional"];
-const VALID_PROBLEMS = ["Save Time", "Save Money", "Grow Online Presence", "Manage Work Better", "Create Content Faster", "Learn New Skills", "Build a Website"];
-const VALID_BUDGETS = ["Free Only", "Under ₹500", "₹500–₹2000", "₹2000+"];
 
 const rateLimitMap = new Map<string, { count: number; firstRequest: number }>();
 const MAX_REQUESTS = 5;
@@ -82,6 +64,13 @@ function checkRateLimit(ip: string): boolean {
   if (entry.count >= MAX_REQUESTS) return false;
   entry.count += 1;
   return true;
+}
+
+function stripHtml(str: string): string {
+  return str.replace(/<[^>]*>/g, "");
+}
+function sanitize(str: string): string {
+  return stripHtml(str).trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -104,16 +93,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const rawBody = await req.json();
-    const body = sanitizeInput(rawBody);
+    const requirements = typeof rawBody.requirements === "string" ? sanitize(rawBody.requirements) : "";
+    const email = typeof rawBody.email === "string" ? sanitize(rawBody.email) : "";
 
-    if (!VALID_PROFESSIONS.includes(body.profession)) {
-      return new Response(JSON.stringify({ error: "Invalid profession" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    if (!VALID_PROBLEMS.includes(body.problem)) {
-      return new Response(JSON.stringify({ error: "Invalid challenge" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    if (!VALID_BUDGETS.includes(body.budget)) {
-      return new Response(JSON.stringify({ error: "Invalid budget" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!requirements || requirements.length < 10) {
+      return new Response(
+        JSON.stringify({ error: "Please provide your requirements (at least 10 characters)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
@@ -121,11 +108,11 @@ Deno.serve(async (req: Request) => {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       tools: [{ googleSearchRetrieval: {} }],
     });
 
-    const prompt = buildPrompt(body.profession, body.problem, body.budget, body.tools_tried);
+    const prompt = RECOMMENDATION_PROMPT.replace("{requirements}", requirements);
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
@@ -134,23 +121,25 @@ Deno.serve(async (req: Request) => {
 
     const recommendation = JSON.parse(jsonMatch[0]);
 
-    const { data: leadData } = await supabaseAdmin
-      .from("leads")
-      .select("id")
-      .eq("email", body.email)
-      .single();
+    if (email) {
+      const { data: leadData } = await supabaseAdmin
+        .from("leads")
+        .select("id")
+        .eq("email", email)
+        .single();
 
-    if (leadData?.id) {
-      await supabaseAdmin.from("recommendations").insert({
-        lead_id: leadData.id,
-        tool_name: recommendation.tool_name,
-        tool_description: recommendation.tagline,
-        why_perfect: recommendation.why_perfect,
-        key_feature: recommendation.key_feature,
-        indian_price: recommendation.indian_price_monthly,
-        coupon_code: recommendation.coupon_code,
-        discount_percent: recommendation.discount_percent,
-      });
+      if (leadData?.id) {
+        await supabaseAdmin.from("recommendations").insert({
+          lead_id: leadData.id,
+          tool_name: recommendation.tool_name,
+          tool_description: recommendation.tagline,
+          why_perfect: recommendation.why_perfect,
+          key_feature: recommendation.key_feature,
+          indian_price: recommendation.indian_price_monthly,
+          coupon_code: recommendation.coupon_code,
+          discount_percent: recommendation.discount_percent,
+        });
+      }
     }
 
     return new Response(
